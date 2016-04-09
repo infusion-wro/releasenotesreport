@@ -21,7 +21,7 @@
           </#list>
 </#if>
 
-	      [${issue.priority.name}] <a href="${jiraUrl}/browse/${issue.key}">${issue.key}: ${issue.summary}</a></li>
+	      [${issue.priority.name}] <a href="${jiraUrl}/browse/${issue.key}">${issue.key}: ${(issue.status.value)!""} : ${issue.summary}</a></li>
 	    </#list>
 	  </ul>
 	  <br/>
