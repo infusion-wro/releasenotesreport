@@ -30,7 +30,7 @@
 
                <img alt="" src="https://ensemble.atlassian.net/images/icons/priorities/${issue.issue.priority.name?lower_case}.svg" title="Highest - This problem will block progress." height="16" width="16">
                </img>
-               <a href="${issue.url}">${issue.issue.key}: ${issue.issue.summary} <span class="label label-warning">${(issue.fixedInFlowWebVersion! "")}</span></a>
+               <a href="${issue.url}">${issue.issue.key}: ${issue.issue.summary} <span class="label label-warning">${(issue.fixedInFlowWebVersion! "")}</span> <span class="label label-warning">${(issue.fixVersions! "")}</span></a>
               <#if (issue.releaseNotes)??>
                  <ul><li><em>${issue.releaseNotes}</em></li></ul>
               </#if>
@@ -56,6 +56,26 @@
         </li>
     </#list>
 </ul>
+</div>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+<h3><p class="bg-success">All defects </p></h3>
+<ol>
+    <#list uniqueDefects as defect>
+        <li>
+              <span class="label label-danger">${defect}</span>
+        </li>
+    </#list>
+</ol>
+</div>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+<h3><p class="bg-success">Link to JIRA</p></h3>
+<a href="${jqlLink}">Link to JIRA</a>
 </div>
 </div>
 

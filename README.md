@@ -13,9 +13,9 @@
 ## Sample use
 
 ### Command line with configuration .properties file
-Parameters for program can be defined in .properties file defined by cli parameter named _configurationFilePath_ 
+Parameters for program can be defined in .properties file defined by cli parameter named _configurationFilePath_
 
-	java -jar target/release-notes-generator-1.0-SNAPSHOT.jar -tag1 0.19.0.20 -configurationFilePath ./configuration.properties
+	java -jar target/release-notes-generator-1.0-SNAPSHOT.jar -configurationFilePath ./configuration.properties -tag1 0.19.0.20
 sample configuration.properties file can be found in src/test/resources/configuration.properties
 
 ### Command line with cli parameters
@@ -31,7 +31,7 @@ Check ```com.infusion.relnotesgen.MainITTest``` for appropriate use case.
                 .gitBranch("master")
 				...
                 .invoke();
-         
+
 ## Parameters overview
 
 | .properties params name   | cli params name				| description         | example value |
@@ -67,11 +67,11 @@ Check ```com.infusion.relnotesgen.MainITTest``` for appropriate use case.
 ## Known issues
 
 #### Jira ssl certificate
-Attlasian jira client used in rng requires to have valid certificate for jira address stored in jre key store. 
+Attlasian jira client used in rng requires to have valid certificate for jira address stored in jre key store.
 Detailed instruction on how add new certificate to sore:
 https://confluence.atlassian.com/display/STASHKB/SSLHandshakeException+-+unable+to+find+valid+certification+path+to+requested+target
 
 #### Search by latest tags
-When rng is run without commitId\* and tag\* parameters then release notes will be generated for last 2 tags. 
+When rng is run without commitId\* and tag\* parameters then release notes will be generated for last 2 tags.
 It may happen that those 2 tags are connected to commits that are not available on branch which rng is using - in that case RuntimeException will be thrown with message:
 _No commit were found for given commit ids commitId1, commitId2. Maybe branch is badly chosen._

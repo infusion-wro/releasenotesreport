@@ -13,9 +13,10 @@ public class ReportJiraIssueModel {
     private final String releaseNotes;
     private final String[] defectIds;
     private final String url;
+    private final String fixVersions;
 
     public ReportJiraIssueModel(final Issue issue, final String defectId, final String url,
-            final String fixedInFlowWebVersion, final String releaseNotes) {
+            final String fixedInFlowWebVersion, final String releaseNotes, final Iterable<String> jiraFixVersions) {
         this.issue = issue;
         this.fixedInFlowWebVersion = fixedInFlowWebVersion;
         this.url = url;
@@ -39,6 +40,14 @@ public class ReportJiraIssueModel {
         } else {
             defectIds = new String[0];
         }
+
+        StringBuilder sb = new StringBuilder();
+        for(String v : jiraFixVersions) {
+            sb.append(v);
+            sb.append(", ");
+        }
+
+        fixVersions = sb.toString();
     }
 
     public Issue getIssue() {
@@ -58,4 +67,6 @@ public class ReportJiraIssueModel {
     }
 
     public String getReleaseNotes() { return releaseNotes; }
+
+    public String getFixVersions() { return fixVersions; }
 }

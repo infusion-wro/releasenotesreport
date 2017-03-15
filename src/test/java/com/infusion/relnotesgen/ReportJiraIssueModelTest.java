@@ -5,6 +5,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.io.IOException;
+import java.util.ArrayList;
 
 import static org.hamcrest.Matchers.equalTo;
 import static org.junit.Assert.assertArrayEquals;
@@ -20,10 +21,16 @@ public class ReportJiraIssueModelTest {
     private final String releaseNotes = "my comment about the issue";
     private final String url = "http://dummy.com/1";
     private final String[] EmptyArray = new String[0];
+    private final Iterable<String> Versions = new ArrayList<String>() {{
+        add("V1");
+        add("V2");
+    }};
 
     @Before
     public void setup() {
+
         issue = null;
+
     }
 
     @Test
@@ -32,7 +39,7 @@ public class ReportJiraIssueModelTest {
         String defectId = null;
 
         // When
-        ReportJiraIssueModel model = new ReportJiraIssueModel(issue, defectId, url, fixedInFlowWebVersion, releaseNotes);
+        ReportJiraIssueModel model = new ReportJiraIssueModel(issue, defectId, url, fixedInFlowWebVersion, releaseNotes, Versions);
 
         // Then
         assertThat(model.getDefectIds(), equalTo(EmptyArray));
@@ -45,7 +52,7 @@ public class ReportJiraIssueModelTest {
         final String[] expected = { defectId };
 
         // When
-        ReportJiraIssueModel model = new ReportJiraIssueModel(issue, defectId, url, fixedInFlowWebVersion, releaseNotes);
+        ReportJiraIssueModel model = new ReportJiraIssueModel(issue, defectId, url, fixedInFlowWebVersion, releaseNotes,new ArrayList<String>() );
 
         // Then
         assertArrayEquals(expected, model.getDefectIds());
@@ -58,7 +65,7 @@ public class ReportJiraIssueModelTest {
         final String[] expected = { "Defect_123", "Defect_3" };
 
         // When
-        ReportJiraIssueModel model = new ReportJiraIssueModel(issue, defectId, url, fixedInFlowWebVersion, releaseNotes);
+        ReportJiraIssueModel model = new ReportJiraIssueModel(issue, defectId, url, fixedInFlowWebVersion, releaseNotes, new ArrayList<String>());
 
         // Then
         assertArrayEquals(expected, model.getDefectIds());
@@ -71,7 +78,7 @@ public class ReportJiraIssueModelTest {
         final String[] expected = { "Defect_123", "Defect_3" };
 
         // When
-        ReportJiraIssueModel model = new ReportJiraIssueModel(issue, defectId, url, fixedInFlowWebVersion, releaseNotes);
+        ReportJiraIssueModel model = new ReportJiraIssueModel(issue, defectId, url, fixedInFlowWebVersion, releaseNotes, Versions);
 
         // Then
         assertArrayEquals(expected, model.getDefectIds());
