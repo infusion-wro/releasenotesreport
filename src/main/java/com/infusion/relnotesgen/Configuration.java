@@ -49,7 +49,6 @@ public class Configuration {
     static final String ISSUE_SORT_TYPE = "issue.sort.type";
     static final String ISSUE_SORT_PRIORITY = "issue.sort.priority";
     static final String REPORT_DIRECTORY = "report.directory";
-    static final String REPORT_TEMPLATE = "report.template";
     static final String REPORT_EXTERNAL_TEMPLATE = "report.externalTemplate";
     static final String REPORT_INTERNAL_TEMPLATE = "report.internalTemplate";
     static final String RELEASE_VERSION = "version.release";

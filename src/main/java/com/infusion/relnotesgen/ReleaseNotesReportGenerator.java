@@ -9,12 +9,14 @@ import java.io.File;
 import java.io.IOException;
 import java.io.StringWriter;
 import java.io.Writer;
+import java.net.URL;
 import java.util.Locale;
 
 import static org.apache.commons.lang3.StringUtils.isNotEmpty;
 
 public class ReleaseNotesReportGenerator {
     private final static Logger logger = LoggerFactory.getLogger(Configuration.LOGGER_NAME);
+    static final ClassLoader loader = ReleaseNotesReportGenerator.class.getClassLoader();
 
     private final String DEFAULT_TEMPLATE = "report.ftl";
 
@@ -62,21 +64,26 @@ public class ReleaseNotesReportGenerator {
 
     private String generateTemplateNameAndInitialize(Configuration configuration, freemarker.template.Configuration freemarkerConf) {
         String templateFilename = (generateInternalViewLevelReport) ? configuration.getReportInternalTemplate() : configuration.getReportExternalTemplate();
-        if (templateFilename==null || templateFilename.isEmpty()) {
-            templateFilename = DEFAULT_TEMPLATE;
-        }
 
+        
         if(isNotEmpty(templateFilename)) {
+
+            if (!templateFilename.contains(":")) {
+                templateFilename = loader.getResource(templateFilename).getPath();
+            }
+
             logger.info("Using template {}", templateFilename);
             File template = new File(templateFilename);
             templateFilename = template.getName();
             try {
-                freemarkerConf.setDirectoryForTemplateLoading(template.getParentFile());
+                File templateParent = template.getParentFile();
+                freemarkerConf.setDirectoryForTemplateLoading(templateParent);
             } catch (IOException e) {
                 throw new RuntimeException("Failed to set template directory", e);
             }
         } else {
             logger.info("Using default template.");
+            templateFilename = DEFAULT_TEMPLATE;
             freemarkerConf.setClassForTemplateLoading(ReleaseNotesReportGenerator.class, "/");
         }
 
