@@ -62,25 +62,20 @@
     </div>
 </#macro>
 
-
 <#macro commitsWithDefectsSection commitsWithDefectIds>
-    <div class="row">
-        <div class="col-md-8">
-            <h4><p class="bg-success">Commits with Defects <span class="badge">${commitsWithDefectIds.size()}</span></p></h4>
-            <ul>
-                <#list commitsWithDefectIds as commit>
-                    <li>
-                        <#if commit.defectIds?has_content>
-                            <#list commit.defectIds as defectId>
-                                <span class="label label-danger">${defectId}</span>
-                            </#list>
-                        </#if>
+    <h4><p class="bg-success">Commits with Defects <span class="badge">${commitsWithDefectIds.size()}</span></p></h4>
+    <ul>
+        <#list commitsWithDefectIds as commit>
+            <li>
+                <#if commit.defectIds?has_content>
+                    <#list commit.defectIds as defectId>
+                        <span class="label label-danger">${defectId}</span>
+                    </#list>
+                </#if>
 [id: ${commit.id}] ${commit.author} ${commit.message}
-                    </li>
-                </#list>
-            </ul>
-        </div>
-    </div>
+            </li>
+        </#list>
+    </ul>
 </#macro>
 
 <#macro defectListSection uniqueDefects>

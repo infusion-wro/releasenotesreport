@@ -22,12 +22,12 @@ public class ReleaseNotesModel {
     private static final Logger logger = LoggerFactory.getLogger(LOGGER_NAME);
 
     private static final String URL_QUOTE = "%22";
-	private static final String URL_COMMA = "%2C";
-	private static final String URL_SPACE = "%20";
-	private static final String ISSUES_JQL_URL = "/issues/?jql=";
-	private static final String JQL_BY_ID_URL = "id%20in%20(";
-	private static final String URL_COMMA_AND_SPACE = URL_COMMA + URL_SPACE;
-	
+    private static final String URL_COMMA = "%2C";
+    private static final String URL_SPACE = "%20";
+    private static final String ISSUES_JQL_URL = "/issues/?jql=";
+    private static final String JQL_BY_ID_URL = "id%20in%20(";
+    private static final String URL_COMMA_AND_SPACE = URL_COMMA + URL_SPACE;
+    
     public ImmutableSet<String> issueCategoryNames;
     public ImmutableMap<String, ImmutableSet<ReportJiraIssueModel>> externalIssuesByCategory;
     public ImmutableMap<String, ImmutableSet<ReportJiraIssueModel>> internalIssuesByCategory;
@@ -44,7 +44,7 @@ public class ReleaseNotesModel {
     public ImmutableSet<String> fixVersions;
     public ImmutableSet<ReportJiraIssueModel> knownIssues;
     public Map<JiraIssueSearchType, String> errors;
-	
+    
     ReleaseNotesModel(final ImmutableSet<String> issueCategoryNames, final ImmutableMap<String, ImmutableSet<ReportJiraIssueModel>> externalIssuesByCategory,
                              ImmutableMap<String, ImmutableSet<ReportJiraIssueModel>> internalIssuesByCategory, final ImmutableSet<ReportCommitModel> commitsWithDefectIds, final ImmutableSet<ReportJiraIssueModel> knownIssues, 
                              final String releaseVersion, final SCMFacade.GitCommitTag commitTag1, final SCMFacade.GitCommitTag commitTag2, final int commitsCount,
@@ -63,16 +63,28 @@ public class ReleaseNotesModel {
         this.knownIssues = knownIssues;
         this.errors = errors;
 
-        uniqueDefects = generateUniqueDefects(externalIssuesByCategory, internalIssuesByCategory, commitsWithDefectIds);
+        uniqueDefects = generateUniqueDefects(generateValidIssuesByCategory(externalIssuesByCategory), 
+                generateValidIssuesByCategory(internalIssuesByCategory), commitsWithDefectIds);
         ImmutableSortedSet<String> uniqueJiras = generateUniqueJiras(externalIssuesByCategory, internalIssuesByCategory);
 
         jqlLink = generateUrlEncodedJqlString(generateJqlUrl(uniqueJiras));
         knownIssuesJqlLink = generateUrlEncodedJqlString(generateJqlUrl(configuration.getKnownIssues()));
     }
 
-	private ImmutableSortedSet<String> generateUniqueJiras(final ImmutableMap<String, ImmutableSet<ReportJiraIssueModel>> externalIssuesByCategory, ImmutableMap<String, ImmutableSet<ReportJiraIssueModel>> internalIssuesByCategory) {
-	    ImmutableMap<String, ImmutableSet<ReportJiraIssueModel>> merged = generateMergedMaps(externalIssuesByCategory, internalIssuesByCategory);
-		return FluentIterable
+    private ImmutableMap<String, ImmutableSet<ReportJiraIssueModel>> generateValidIssuesByCategory (ImmutableMap<String, ImmutableSet<ReportJiraIssueModel>> issuesByCategory) {
+        Map<String, ImmutableSet<ReportJiraIssueModel>> validIssuesByCategoryTemp = new HashMap<String, ImmutableSet<ReportJiraIssueModel>>();
+        validIssuesByCategoryTemp.putAll(issuesByCategory);
+        for (JiraIssueSearchType curr : JiraIssueSearchType.values()) {
+            if (!curr.isValid()) {
+                validIssuesByCategoryTemp.remove(curr.title());
+            }
+        }
+        return ImmutableMap.copyOf(validIssuesByCategoryTemp);
+    }
+
+    private ImmutableSortedSet<String> generateUniqueJiras(final ImmutableMap<String, ImmutableSet<ReportJiraIssueModel>> externalIssuesByCategory, ImmutableMap<String, ImmutableSet<ReportJiraIssueModel>> internalIssuesByCategory) {
+        ImmutableMap<String, ImmutableSet<ReportJiraIssueModel>> merged = generateMergedMaps(externalIssuesByCategory, internalIssuesByCategory);
+        return FluentIterable
                 .from(merged.values())
                 .transformAndConcat(new Function<ImmutableSet<ReportJiraIssueModel>, List<String>>() {
 
@@ -96,14 +108,14 @@ public class ReleaseNotesModel {
                  }
 
                 );
-	}
+    }
 
     private ImmutableMap<String, ImmutableSet<ReportJiraIssueModel>> generateMergedMaps(
             final ImmutableMap<String, ImmutableSet<ReportJiraIssueModel>> externalIssuesByCategory,
             final ImmutableMap<String, ImmutableSet<ReportJiraIssueModel>> internalIssuesByCategory) {
         Map<String, Set<ReportJiraIssueModel>> merged = new HashMap<String, Set<ReportJiraIssueModel>>();
 
-	    // put all entries from external into the merged set
+        // put all entries from external into the merged set
         for ( Map.Entry<String, ImmutableSet<ReportJiraIssueModel>> entry : externalIssuesByCategory.entrySet() ) {
             Set<ReportJiraIssueModel> temp = new HashSet<ReportJiraIssueModel>();
             temp.addAll(entry.getValue());
@@ -131,11 +143,11 @@ public class ReleaseNotesModel {
         return ImmutableMap.copyOf(mergedTemp);
     }
 
-	private ImmutableSortedSet<String> generateUniqueDefects(final ImmutableMap<String, ImmutableSet<ReportJiraIssueModel>> externalIssuesByCategory,
-			ImmutableMap<String, ImmutableSet<ReportJiraIssueModel>> internalIssuesByCategory, final ImmutableSet<ReportCommitModel> commitsWithDefectIds) {
+    private ImmutableSortedSet<String> generateUniqueDefects(final ImmutableMap<String, ImmutableSet<ReportJiraIssueModel>> externalIssuesByCategory,
+            ImmutableMap<String, ImmutableSet<ReportJiraIssueModel>> internalIssuesByCategory, final ImmutableSet<ReportCommitModel> commitsWithDefectIds) {
 
-	    ImmutableMap<String, ImmutableSet<ReportJiraIssueModel>> merged = generateMergedMaps(externalIssuesByCategory, internalIssuesByCategory);
-		return FluentIterable
+        ImmutableMap<String, ImmutableSet<ReportJiraIssueModel>> merged = generateMergedMaps(externalIssuesByCategory, internalIssuesByCategory);
+        return FluentIterable
                 .from(merged.values())
                 .transformAndConcat(new Function<ImmutableSet<ReportJiraIssueModel>, List<String>>() {
                     @Override
@@ -149,14 +161,7 @@ public class ReleaseNotesModel {
                                 }
                             }).toList();
                     }
-                }).append(FluentIterable.from(commitsWithDefectIds)
-	                    .transformAndConcat(new Function<ReportCommitModel, ImmutableSet<String>>() {
-	                        @Override
-	                        public ImmutableSet<String> apply(ReportCommitModel reportCommitModel) {
-	                            return reportCommitModel.getDefectIds();
-	                        }
-	                    })
-                )
+                })
                 .transform(new Function<String, String>() {
                     @Override
                     public String apply(String s) {
@@ -170,52 +175,57 @@ public class ReleaseNotesModel {
                      }
                  }
                 );
-	}
+    }
 
-	private String generateUrlEncodedJqlString(final String jqlString) {
-		StringBuilder sb = new StringBuilder(configuration.getJiraUrl());
-		sb.append(ISSUES_JQL_URL);
-		sb.append(jqlString);
+    private String generateUrlEncodedJqlString(final String jqlString) {
+        StringBuilder sb = new StringBuilder(configuration.getJiraUrl());
+        sb.append(ISSUES_JQL_URL);
+        sb.append(jqlString);
         return sb.toString();
-	}
+    }
 
-	private String generateJqlUrl(final String knownIssues) {
-		if (knownIssues==null || knownIssues.isEmpty()) {
-			return "";
-		}
-		return knownIssues.replaceAll(",", URL_COMMA).replaceAll(" ", URL_SPACE).replaceAll("\"", URL_QUOTE);
-	}
+    private String generateJqlUrl(final String knownIssues) {
+        if (knownIssues==null || knownIssues.isEmpty()) {
+            return "";
+        }
+        return knownIssues.replaceAll(",", URL_COMMA).replaceAll(" ", URL_SPACE).replaceAll("\"", URL_QUOTE);
+    }
 
-	private String generateJqlUrl(final ImmutableSortedSet<String> uniqueJiras) {
-		StringBuilder sb = new StringBuilder(JQL_BY_ID_URL);
-		for (String s : uniqueJiras) {
+    private String generateJqlUrl(final ImmutableSortedSet<String> uniqueJiras) {
+        StringBuilder sb = new StringBuilder(JQL_BY_ID_URL);
+        for (String s : uniqueJiras) {
             sb.append(s);
             sb.append(URL_COMMA_AND_SPACE);
         }
         sb.replace(sb.length()-URL_COMMA_AND_SPACE.length(),sb.length(),"");
         sb.append(")");
         return sb.toString();
-	}
+    }
 
     public ImmutableSet<String> getIssueCategoryNames() {
         return issueCategoryNames;
     }
-	
+    
     public boolean categoryNameIsInvalid(final String categoryName) {
-    	return JiraIssueSearchType.INVALID_STATE.title().equals(categoryName) || JiraIssueSearchType.INVALID_FIX_VERSION.title().equals(categoryName);
+        for (JiraIssueSearchType curr : JiraIssueSearchType.values()) {
+            if (curr.title().equals(categoryName) && !curr.isValid()) {
+                return true;
+            }
+        }
+        return false;    
     }
 
-	public List<String> getIssueCategoryNamesList() {
-		List<String> sortedList = new ArrayList<String>();
-		for (String categoryName : issueCategoryNames) {
+    public List<String> getIssueCategoryNamesList() {
+        List<String> sortedList = new ArrayList<String>();
+        for (String categoryName : issueCategoryNames) {
             if (JiraIssueSearchType.INVALID_STATE.title().equals(categoryName)) {
                 sortedList.add(0, categoryName);
             } else if (JiraIssueSearchType.INVALID_FIX_VERSION.title().equals(categoryName)) {
-				sortedList.add(0, categoryName);
-			} else {
-				sortedList.add(categoryName);
-			}
-		}
+                sortedList.add(0, categoryName);
+            } else {
+                sortedList.add(categoryName);
+            }
+        }
         return sortedList;
     }
 
@@ -224,11 +234,23 @@ public class ReleaseNotesModel {
     }
     
     public int getTotalExternalInvalidIssueCount() {
-        return getExternalIssueCountByCategoryName(JiraIssueSearchType.INVALID_FIX_VERSION.title()) + getExternalIssueCountByCategoryName(JiraIssueSearchType.INVALID_STATE.title());
+        int invalidCount = 0;
+        for (JiraIssueSearchType curr : JiraIssueSearchType.values()) {
+            if (!curr.isValid()) {
+                invalidCount += getExternalIssueCountByCategoryName(curr.title());
+            }
+        }
+        return invalidCount;
     }
 
     public int getTotalInternalInvalidIssueCount() {
-        return getInternalIssueCountByCategoryName(JiraIssueSearchType.INVALID_FIX_VERSION.title()) + getInternalIssueCountByCategoryName(JiraIssueSearchType.INVALID_STATE.title());
+        int invalidCount = 0;
+        for (JiraIssueSearchType curr : JiraIssueSearchType.values()) {
+            if (!curr.isValid()) {
+                invalidCount += getInternalIssueCountByCategoryName(curr.title());
+            }
+        }
+        return invalidCount;
     }
 
     public int getTotalIssueCountByCategoryName(final String categoryName) {
@@ -311,40 +333,40 @@ public class ReleaseNotesModel {
     }
 
     public String getJqlLink() {
-    	return jqlLink; 
+        return jqlLink; 
     }
 
     public Configuration getConfiguration() { 
-    	return configuration;
+        return configuration;
     }
 
-	public ImmutableSet<String> getFixVersions() {
-		return fixVersions;
-	}
+    public ImmutableSet<String> getFixVersions() {
+        return fixVersions;
+    }
 
-	public ImmutableSet<ReportJiraIssueModel> getKnownIssues() {
-		return knownIssues;
-	}
+    public ImmutableSet<ReportJiraIssueModel> getKnownIssues() {
+        return knownIssues;
+    }
 
-	public String getKnownIssuesJqlLink() {
-		return knownIssuesJqlLink;
-	}
+    public String getKnownIssuesJqlLink() {
+        return knownIssuesJqlLink;
+    }
 
-	public Map<JiraIssueSearchType, String> getErrors() {
-		return errors;
-	}
-	
-	public String getKnownIssuesErrorMessage() {
-		return errors.get(JiraIssueSearchType.KNOWN_ISSUE);
-	}
+    public Map<JiraIssueSearchType, String> getErrors() {
+        return errors;
+    }
+    
+    public String getKnownIssuesErrorMessage() {
+        return errors.get(JiraIssueSearchType.KNOWN_ISSUE);
+    }
 
-	public String getFixVersionErrorMessage() {
-		return errors.get(JiraIssueSearchType.FIX_VERSION);
-	}
+    public String getFixVersionErrorMessage() {
+        return errors.get(JiraIssueSearchType.FIX_VERSION);
+    }
 
-	public String getGenericErrorMessage() {
-		return errors.get(JiraIssueSearchType.GENERIC);
-	}
+    public String getGenericErrorMessage() {
+        return errors.get(JiraIssueSearchType.GENERIC);
+    }
 
 
 }
