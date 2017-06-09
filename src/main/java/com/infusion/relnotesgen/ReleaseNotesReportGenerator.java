@@ -16,9 +16,13 @@ import static org.apache.commons.lang3.StringUtils.isNotEmpty;
 public class ReleaseNotesReportGenerator {
     private final static Logger logger = LoggerFactory.getLogger(Configuration.LOGGER_NAME);
 
-    private final Template template;
+    private final String DEFAULT_TEMPLATE = "report.ftl";
 
-    public ReleaseNotesReportGenerator(com.infusion.relnotesgen.Configuration configuration) {
+    private final Template template;
+    private boolean generateInternalViewLevelReport;
+
+    public ReleaseNotesReportGenerator(com.infusion.relnotesgen.Configuration configuration, boolean generateInternalViewLevelReport) {
+        this.generateInternalViewLevelReport = generateInternalViewLevelReport;
         this.template = getFreemarkerTemplate(configuration);
     }
 
@@ -36,23 +40,10 @@ public class ReleaseNotesReportGenerator {
         }
     }
 
-    private static Template getFreemarkerTemplate(Configuration configuration) {
+    private Template getFreemarkerTemplate(Configuration configuration) {
         freemarker.template.Configuration freemarkerConf = new freemarker.template.Configuration();
-        String templateName = "report.ftl";
 
-        if(isNotEmpty(configuration.getReportTemplate())) {
-            logger.info("Using template {}", configuration.getReportTemplate());
-            File template = new File(configuration.getReportTemplate());
-            templateName = template.getName();
-            try {
-                freemarkerConf.setDirectoryForTemplateLoading(template.getParentFile());
-            } catch (IOException e) {
-                throw new RuntimeException("Failed to set template directory", e);
-            }
-        } else {
-            logger.info("Using default template.");
-            freemarkerConf.setClassForTemplateLoading(ReleaseNotesReportGenerator.class, "/");
-        }
+        String templateName = generateTemplateNameAndInitialize(configuration, freemarkerConf);
 
         freemarkerConf.setURLEscapingCharset("UTF-8");
         freemarkerConf.setIncompatibleImprovements(new Version(2, 3, 20));
@@ -67,5 +58,28 @@ public class ReleaseNotesReportGenerator {
         } catch (IOException e) {
             throw new RuntimeException("Failed to load report template", e);
         }
+    }
+
+    private String generateTemplateNameAndInitialize(Configuration configuration, freemarker.template.Configuration freemarkerConf) {
+        String templateFilename = (generateInternalViewLevelReport) ? configuration.getReportInternalTemplate() : configuration.getReportExternalTemplate();
+        if (templateFilename==null || templateFilename.isEmpty()) {
+            templateFilename = DEFAULT_TEMPLATE;
+        }
+
+        if(isNotEmpty(templateFilename)) {
+            logger.info("Using template {}", templateFilename);
+            File template = new File(templateFilename);
+            templateFilename = template.getName();
+            try {
+                freemarkerConf.setDirectoryForTemplateLoading(template.getParentFile());
+            } catch (IOException e) {
+                throw new RuntimeException("Failed to set template directory", e);
+            }
+        } else {
+            logger.info("Using default template.");
+            freemarkerConf.setClassForTemplateLoading(ReleaseNotesReportGenerator.class, "/");
+        }
+
+        return templateFilename;
     }
 }
