@@ -296,14 +296,15 @@ public class GitFacade implements SCMFacade {
                     }
                 }
 
+                if (commit.getId().getName().equals(commitTagRequestedLowerBound.getCommit())) {
+                    // found oldest commit which should not be included
+                    break;
+                }
+
                 // add found commit to response set
                 commits.add(new Commit(commit.getFullMessage(), commit.getId().getName(),
                         commit.getAuthorIdent().getName()));
 
-                if (commit.getId().getName().equals(commitTagRequestedLowerBound.getCommit())) {
-                    // found oldest commit
-                    break;
-                }
             }
 
             logger.info("Found {} commit messages.", commits.size());
