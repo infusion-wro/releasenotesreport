@@ -297,6 +297,13 @@ public class GitFacade implements SCMFacade {
                 }
 
                 if (commit.getId().getName().equals(commitTagRequestedLowerBound.getCommit())) {
+                    // if commit IDs are the same then add it
+                    if (commitTagRequestedLowerBound.getCommit().equals(commitTagRequestedUpperBound.getCommit()) ) {
+                        // add found commit to response set
+                        commits.add(new Commit(commit.getFullMessage(), commit.getId().getName(),
+                                commit.getAuthorIdent().getName()));
+                    }
+
                     // found oldest commit which should not be included
                     break;
                 }

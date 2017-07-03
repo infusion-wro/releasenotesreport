@@ -79,8 +79,8 @@ public class GitMessageReadingWithCloningOfRepositoryTest {
         Set<String> messages = getMessages(gitMessageReader.readByCommit(commitId1, commitId2).commits);
 
         // Then
-        assertThat(messages, hasSize(2));
-        assertThat(messages, hasItems("SYM-2 changed dummy file for second time\n", "SYM-2 changed dummy file for first time\n"));
+        assertThat(messages, hasSize(1));
+        assertThat(messages, hasItems("SYM-2 changed dummy file for second time\n"));
     }
 
     @Test
@@ -97,8 +97,8 @@ public class GitMessageReadingWithCloningOfRepositoryTest {
         Set<String> messages = getMessages(gitMessageReader.readByCommit(commitId1, commitId2).commits);
 
         // Then
-        assertThat(messages, hasSize(2));
-        assertThat(messages, hasItems("SYM-2 changed dummy file for second time\n", "SYM-2 changed dummy file for first time\n"));
+        assertThat(messages, hasSize(1));
+        assertThat(messages, hasItems("SYM-2 changed dummy file for second time\n"));
     }
 
     @Test
@@ -149,7 +149,7 @@ public class GitMessageReadingWithCloningOfRepositoryTest {
         Set<String> messages = getMessages(gitInfo.commits);
 
         // Then
-        assertThat(messages, hasSize(4));
+        assertThat(messages, hasSize(3));
         assertThat(messages, hasItems("SYM-33 release of version 1.3\n", "SYM-31 prepare for version 1.3\n", "SYM-32 prepare for version 1.3 part 2\n", "SYM-33 release of version 1.3\n"));
         assertThat(gitInfo.version, equalTo("1.3"));
     }
@@ -167,8 +167,8 @@ public class GitMessageReadingWithCloningOfRepositoryTest {
         Set<String> messages = getMessages(gitInfo.commits);
 
         // Then
-        assertThat(messages, hasSize(10));
-        assertThat(messages, hasItems("SYM-13 release of version 1.1\n", "SYM-31 prepare for version 1.3\n", "SYM-32 prepare for version 1.3 part 2\n", "SYM-33 release of version 1.3\n",
+        assertThat(messages, hasSize(9));
+        assertThat(messages, hasItems("SYM-31 prepare for version 1.3\n", "SYM-32 prepare for version 1.3 part 2\n", "SYM-33 release of version 1.3\n",
                 "SYM-41 prepare for version 1.4\n", "SYM-42 prepare for version 1.4 part 2\n", "SYM-43 releas of version 1.4\n"));
         assertThat(gitInfo.version, equalTo("1.4"));
     }

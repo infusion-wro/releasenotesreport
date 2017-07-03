@@ -151,9 +151,9 @@ Date:   Wed Apr 15 15:37:44 2015 +0200
         return Arrays.asList(new Object[][] {
                 //all commits
                 { "1c814546893dc5544f86ca87ca58f0d162c9ccd2", "430c3f94a1f2dd4940c547ae8a5ede83910597b9",
-                    new String[] {"SYM-1 created initial dummy file\n", "SYM-2 changed dummy file for first time\n",
+                    new String[] {"SYM-2 changed dummy file for first time\n",
                         "SYM-2 changed dummy file for second time\n", "SYM-3 changed dummy file for third time\n"},
-                    "1.0", "Should return 4 messages when commit 1 newer then commit 2"},
+                    "1.0", "Should return 3 messages when commit 1 newer then commit 2"},
 
                 //all commits with reverted search parameters order (430c is newer than 1c81)
                 { "430c3f94a1f2dd4940c547ae8a5ede83910597b9", "1c814546893dc5544f86ca87ca58f0d162c9ccd2",
@@ -167,7 +167,7 @@ Date:   Wed Apr 15 15:37:44 2015 +0200
 
                 //subcollection of elements
                 { "1c814546893dc5544f86ca87ca58f0d162c9ccd2", "948fa8f6cc8a49f08e3c3a426c9e3d7323ce469a",
-                    new String[] {"SYM-1 created initial dummy file\n", "SYM-2 changed dummy file for first time\n",
+                    new String[] {"SYM-2 changed dummy file for first time\n",
                         "SYM-2 changed dummy file for second time\n"},
                         "1.0", "" },
 
