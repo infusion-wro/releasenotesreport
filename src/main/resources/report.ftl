@@ -1,26 +1,20 @@
 <#macro displayInvalidIssuesForCategory categoryName>
-    <h4><p class="bg-success">${categoryName} <span class="badge">${getIssueCountByCategoryName(categoryName)}</span></p></h3>
+    <h4><p class="bg-success">${categoryName} <span class="badge">${getTotalIssueCountByCategoryName(categoryName)}</span></p></h3>
     <ul>
-        <#list getIssuesByCategoryName(categoryName) as issue>
+        <#list getExternalIssuesByCategoryName(categoryName) as issue>
 			<@showIssueDetails issue=issue/>
         </#list>
     </ul>
-</#macro>
-
-<#macro commitsWithDefectsSection commitsWithDefectIds>
-    <h4><p class="bg-success">Commits with Defects <span class="badge">${commitsWithDefectIds.size()}</span></p></h4>
-    <ul>
-        <#list commitsWithDefectIds as commit>
-            <li>
-                <#if commit.defectIds?has_content>
-                    <#list commit.defectIds as defectId>
-                        <span class="label label-danger">${defectId}</span>
-                    </#list>
-                </#if>
-[id: ${commit.id}] ${commit.author} ${commit.message}
-            </li>
-        </#list>
-    </ul>
+    <#if ((getInternalIssueCountByCategoryName(categoryName)) gt 0)>
+	    <div style="margin:10px 40px">
+		    <h4><p class="bg-success"><span class="badge">INTERNAL</span> ${categoryName} <span class="badge">${getInternalIssueCountByCategoryName(categoryName)}</span></p></h3>
+		    <ul>
+		        <#list getInternalIssuesByCategoryName(categoryName) as issue>
+					<@showIssueDetails issue=issue/>
+		        </#list>
+		    </ul>
+	    </div>
+    </#if>
 </#macro>
 
 <#macro displayAllValidIssues>
@@ -37,14 +31,24 @@
 </#macro>
 
 <#macro displayValidIssue categoryName>
-    <#if (getIssuesByCategoryName(categoryName).size()>0)>
+    <#if ((getTotalIssueCountByCategoryName(categoryName)) gt 0)>
         <#if (!categoryNameIsInvalid(categoryName))>
-            <h3><p class="bg-success">Released issues with type ${categoryName} <span class="badge">${getIssueCountByCategoryName(categoryName)}</span></p></h3>
+            <h3><p class="bg-success">Released issues with type ${categoryName} <span class="badge">${getTotalIssueCountByCategoryName(categoryName)}</span></p></h3>
             <ul>
-                <#list getIssuesByCategoryName(categoryName) as issue>
+                <#list getExternalIssuesByCategoryName(categoryName) as issue>
 					<@showIssueDetails issue=issue/>
                 </#list>
             </ul>
+		    <#if ((getInternalIssueCountByCategoryName(categoryName)) gt 0)>
+			    <div style="margin:10px 40px">
+		            <h3><p class="bg-success"><span class="badge">INTERNAL</span> Released issues with type ${categoryName} <span class="badge">${getInternalIssueCountByCategoryName(categoryName)}</span></p></h3>
+		            <ul>
+		                <#list getInternalIssuesByCategoryName(categoryName) as issue>
+							<@showIssueDetails issue=issue/>
+		                </#list>
+		            </ul>
+		    	</div>
+		    </#if>
         </#if>
     </#if>
 </#macro>
@@ -56,6 +60,22 @@
 		<@displayInvalidIssuesForCategory categoryName=getInvalidByStatusCategoryName()/>
 		<@displayInvalidIssuesForCategory categoryName=getInvalidByFixVersionCategoryName()/>
     </div>
+</#macro>
+
+<#macro commitsWithDefectsSection commitsWithDefectIds>
+    <h4><p class="bg-success">Commits with Defects <span class="badge">${commitsWithDefectIds.size()}</span></p></h4>
+    <ul>
+        <#list commitsWithDefectIds as commit>
+            <li>
+                <#if commit.defectIds?has_content>
+                    <#list commit.defectIds as defectId>
+                        <span class="label label-danger">${defectId}</span>
+                    </#list>
+                </#if>
+[id: ${commit.id}] ${commit.author} ${commit.message}
+            </li>
+        </#list>
+    </ul>
 </#macro>
 
 <#macro defectListSection uniqueDefects>

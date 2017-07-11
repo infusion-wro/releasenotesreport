@@ -42,11 +42,13 @@ public class MainInvoker {
     private String issueSortType;
     private String issueSortPriority;
     private String reportDirectory;
-    private String reportTemplate;
+    private String reportInternalTemplate;
+    private String reportExternalTemplate;
     private String knownIssues;
     private String fixVersions;
     private String labelsToSkip;
     private String clientFacingFilters;
+    private String devMode;
 
     public void invoke() {
         List<String> arguments = new ArrayList<>();
@@ -202,8 +204,13 @@ public class MainInvoker {
         return this;
     }
 
-    public MainInvoker reportTemplate(final String reportTemplate) {
-        this.reportTemplate = reportTemplate;
+    public MainInvoker reportInternalTemplate(final String reportInternalTemplate) {
+        this.reportInternalTemplate = reportInternalTemplate;
+        return this;
+    }
+
+    public MainInvoker reportExternalTemplate(final String reportExternalTemplate) {
+        this.reportExternalTemplate = reportExternalTemplate;
         return this;
     }
 
@@ -224,6 +231,11 @@ public class MainInvoker {
 
     public MainInvoker clientFacing(final String clientFacingFilters) {
         this.clientFacingFilters = clientFacingFilters;
+        return this;
+    }
+
+    public MainInvoker devMode(final String devMode) {
+        this.devMode = devMode;
         return this;
     }
 }

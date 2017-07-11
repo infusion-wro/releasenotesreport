@@ -5,10 +5,14 @@ import com.beust.jcommander.Parameter;
 import com.google.common.collect.FluentIterable;
 import com.google.common.collect.ImmutableSet;
 import com.infusion.relnotesgen.Configuration.Element;
+import com.infusion.relnotesgen.SCMFacade.Response;
+import com.infusion.relnotesgen.util.FileUtils;
 import com.infusion.relnotesgen.util.IssueCategorizer;
 import com.infusion.relnotesgen.util.IssueCategorizerImpl;
 import com.infusion.relnotesgen.util.JiraUtils;
 import com.infusion.relnotesgen.util.JiraUtilsImpl;
+import com.infusion.relnotesgen.util.XstreamSerializer;
+
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -25,6 +29,7 @@ import static org.apache.commons.lang3.StringUtils.*;
 public class Main {
 
     private final static Logger logger = LoggerFactory.getLogger(Configuration.LOGGER_NAME);
+    private final static String GIT_INFO_SERIALIZED_FILE= "gitInfo.xml";
 
     public static void main(final String[] args) throws IOException {
         generateReleaseNotes(args);
@@ -39,6 +44,8 @@ public class Main {
         final Configuration configuration = readConfiguration(programParameters);
         logger.info("Build configuration: {}", configuration);
 
+        JiraConnector jiraConnector = generateJiraConnector(configuration);
+
         // Get git log commits
         final SCMFacade.Response gitInfo = generateGitInfo(programParameters, configuration);
 
@@ -50,7 +57,6 @@ public class Main {
                 return FluentIterable.from(gitInfo.commits).toSet();
             }
         };
-        JiraConnector jiraConnector = new JiraConnectorImpl(configuration);
         VersionInfoProvider versionInfoProvider = new VersionInfoProvider() {
 
             @Override
@@ -62,32 +68,36 @@ public class Main {
         JiraUtils jiraUtils = new JiraUtilsImpl(configuration);
         CommitMessageParser commitMessageParser = new CommitMessageParserImpl(configuration);
 
-        // Generate report model
-        ReleaseNotesModelFactory factory = new ReleaseNotesModelFactory.ReleaseNotesModelFactoryBuilder()
+        // Generate report model factory
+        ReleaseNotesModelFactory factory = new ReleaseNotesModelFactoryBuilder()
                 .commitInfoProvider(commitInfoProvider).jiraConnector(jiraConnector).issueCategorizer(issueCategorizer)
                 .versionInfoProvider(versionInfoProvider).jiraUtils(jiraUtils).commitMessageParser(commitMessageParser)
                 .gitInfo(gitInfo).configuration(configuration).build();
 
-        generateReleaseNotesFile(configuration, versionInfoProvider, factory, false);
-        if (configuration.isClientFacing()) {
-            generateReleaseNotesFile(configuration, versionInfoProvider, factory, true);
+        factory.prepare();
+        ReleaseNotesModel internalReportModel = factory.getInternal();
+        generateReleaseNotesFile(configuration, versionInfoProvider, internalReportModel, true);
+        if (configuration.isClientFacingRequested()) {
+            ReleaseNotesModel externalReportModel = factory.getExternal();
+            generateReleaseNotesFile(configuration, versionInfoProvider, externalReportModel, false);
         }
 
     }
 
-    private static void generateReleaseNotesFile(final Configuration configuration, final VersionInfoProvider versionInfoProvider, 
-            final ReleaseNotesModelFactory factory, final boolean clientFacing) throws IOException {
-
-        ReleaseNotesModel reportModel = factory.get(clientFacing);
-
-        // Generate report
-        ReleaseNotesReportGenerator generator = new ReleaseNotesReportGenerator(configuration);
-        String filename;
-        if (clientFacing) { 
-            filename = versionInfoProvider.getReleaseVersion().replace(".", "_") + ".html";
-        } else {
-            filename = versionInfoProvider.getReleaseVersion().replace(".", "_") + "_INTERNAL.html";            
+    private static JiraConnector generateJiraConnector(final Configuration configuration) {
+        boolean devMode = configuration.getDevMode();
+        JiraConnector jiraConnector = new JiraConnectorImpl(configuration);
+        if (devMode) {
+            jiraConnector = new JiraConnectorMock(configuration);
         }
+        return jiraConnector;
+    }
+
+    private static void generateReleaseNotesFile(final Configuration configuration, final VersionInfoProvider versionInfoProvider, 
+            ReleaseNotesModel reportModel, final boolean generateInternalViewLevelReport) throws IOException {
+
+        ReleaseNotesReportGenerator generator = new ReleaseNotesReportGenerator(configuration, generateInternalViewLevelReport);
+        String filename = generateReportFilename(versionInfoProvider, generateInternalViewLevelReport);
         File reportFile = new File(getReportDirectory(configuration), filename);
 
         logger.info("Creating report in {}", reportFile.getPath());
@@ -99,6 +109,17 @@ public class Main {
         logger.info("Generation of report is finished.");
     }
 
+    private static String generateReportFilename(final VersionInfoProvider versionInfoProvider,
+            final boolean generateInternalViewLevelReport) {
+        String filename;
+        if (generateInternalViewLevelReport) {
+            filename = versionInfoProvider.getReleaseVersion().replace(".", "_") + "_INTERNAL.html";            
+        } else {
+            filename = versionInfoProvider.getReleaseVersion().replace(".", "_") + ".html";
+        }
+        return filename;
+    }
+
     private static SCMFacade.Response generateGitInfo(ProgramParameters programParameters,
             final Configuration configuration) {
 
@@ -106,6 +127,33 @@ public class Main {
                 new PublicKeyAuthenticator() :
                 new UserCredentialsAuthenticator(configuration);
                 
+        final SCMFacade.Response gitInfo;
+        boolean devMode = configuration.getDevMode();
+        if (devMode) {
+            try {
+                String filename = FileUtils.generateSerializedObjectPath(configuration.getReportDirectory()) + GIT_INFO_SERIALIZED_FILE;
+                XstreamSerializer<SCMFacade.Response> serializer = new XstreamSerializer<SCMFacade.Response>();
+                
+                File objXmlFile = new File(filename);
+                if(objXmlFile.exists() && !objXmlFile.isDirectory()) { 
+                    // deserialize and return
+                    gitInfo = (Response) serializer.deserialize(filename);
+                } else {
+                    // retrieve, serialize and return
+                    gitInfo = generateNewGitInfo(programParameters, configuration, authenticator);
+                    serializer.serialize(filename, gitInfo);
+                }
+                return gitInfo;
+            } catch (IOException e) {
+                logger.error("{}", e.getMessage(), e);
+            }
+        }
+
+        return generateNewGitInfo(programParameters, configuration, authenticator);
+    }
+
+    private static SCMFacade.Response generateNewGitInfo(ProgramParameters programParameters,
+            final Configuration configuration, Authenticator authenticator) {
         final SCMFacade.Response gitInfo;
         SCMFacade gitFacade = null;
         try {
@@ -262,9 +310,13 @@ public class Main {
         @Parameter(names = { "-reportDirectory" })
         private String reportDirectory;
 
-        @Element(Configuration.REPORT_TEMPLATE)
-        @Parameter(names = { "-reportTemplate" })
-        private String reportTemplate;
+        @Element(Configuration.REPORT_INTERNAL_TEMPLATE)
+        @Parameter(names = { "-reportInternalTemplate" })
+        private String reportInternalTemplate;
+
+        @Element(Configuration.REPORT_EXTERNAL_TEMPLATE)
+        @Parameter(names = { "-reportExternalTemplate" })
+        private String reportExternalTemplate;
 
         @Element(Configuration.RELEASE_VERSION)
         @Parameter(names = { "-releaseVersion" })
