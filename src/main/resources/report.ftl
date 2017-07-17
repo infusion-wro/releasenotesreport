@@ -1,22 +1,77 @@
 <#macro displayInvalidIssuesForCategory categoryName>
-    <h4><p class="bg-success">${categoryName} <span class="badge">${getIssueCountByCategoryName(categoryName)}</span></p></h3>
+    <h4><p class="bg-success">${categoryName} <span class="badge">${getTotalIssueCountByCategoryName(categoryName)}</span></p></h3>
     <ul>
-        <#list getIssuesByCategoryName(categoryName) as issue>
+        <#list getExternalIssuesByCategoryName(categoryName) as issue>
 			<@showIssueDetails issue=issue/>
         </#list>
     </ul>
+    <#if ((getInternalIssueCountByCategoryName(categoryName)) gt 0)>
+	    <div style="margin:10px 40px">
+		    <h4><p class="bg-success"><span class="badge">INTERNAL</span> ${categoryName} <span class="badge">${getInternalIssueCountByCategoryName(categoryName)}</span></p></h3>
+		    <ul>
+		        <#list getInternalIssuesByCategoryName(categoryName) as issue>
+					<@showIssueDetails issue=issue/>
+		        </#list>
+		    </ul>
+	    </div>
+    </#if>
 </#macro>
 
 <#macro displayInvalidIssuesForCategoryByStatus categoryName>
-    <h4><p class="bg-success">${categoryName} <span class="badge">${getIssueCountByCategoryName(categoryName)}</span></p></h3>
+	<h4><p class="bg-success">${categoryName} <span class="badge">${getIssueCountByCategoryName(categoryName)}</span></p></h3>
     <ul>
         <#list getInvalidStateIssueStatuses() as status>
-		    <h4><p class="bg-success">${status}</p></h3>
-	        <#list getInvalidStateIssuesByStatus(status) as issue>
-				<@showIssueDetails issue=issue/>
-	        </#list>
+ 	    <h4><p class="bg-success">${status}</p></h3>
+ 	       <#list getInvalidStateIssuesByStatus(status) as issue>
+ 			<@showIssueDetails issue=issue/>
+ 	       </#list>
         </#list>
     </ul>
+</#macro>
+ 
+<#macro displayAllValidIssues>
+    <#list getIssueCategoryNamesList() as categoryName>
+        <div class="row">
+            <div class="col-md-8">
+                <#if (!getGenericErrorMessage().isEmpty())>
+	                <p>Error: ${getGenericErrorMessage()}</p>
+                </#if>
+              	<@displayValidIssue categoryName=categoryName/>
+            </div>
+        </div>
+    </#list>
+</#macro>
+
+<#macro displayValidIssue categoryName>
+    <#if ((getTotalIssueCountByCategoryName(categoryName)) gt 0)>
+        <#if (!categoryNameIsInvalid(categoryName))>
+            <h3><p class="bg-success">Released issues with type ${categoryName} <span class="badge">${getTotalIssueCountByCategoryName(categoryName)}</span></p></h3>
+            <ul>
+                <#list getExternalIssuesByCategoryName(categoryName) as issue>
+					<@showIssueDetails issue=issue/>
+                </#list>
+            </ul>
+		    <#if ((getInternalIssueCountByCategoryName(categoryName)) gt 0)>
+			    <div style="margin:10px 40px">
+		            <h3><p class="bg-success"><span class="badge">INTERNAL</span> Released issues with type ${categoryName} <span class="badge">${getInternalIssueCountByCategoryName(categoryName)}</span></p></h3>
+		            <ul>
+		                <#list getInternalIssuesByCategoryName(categoryName) as issue>
+							<@showIssueDetails issue=issue/>
+		                </#list>
+		            </ul>
+		    	</div>
+		    </#if>
+        </#if>
+    </#if>
+</#macro>
+
+<#macro displayInvalidIssues>
+    <h3><p class="bg-success">Invalid Issues <span class="badge">${getTotalInvalidIssueCount()}</span></p></h3>
+    <div style="margin:10px 40px">
+		<@commitsWithDefectsSection commitsWithDefectIds=commitsWithDefectIds/>
+		<@displayInvalidIssuesForCategoryByStatus categoryName=getInvalidByStatusCategoryName()/>
+		<@displayInvalidIssuesForCategory categoryName=getInvalidByFixVersionCategoryName()/>
+    </div>
 </#macro>
 
 <#macro commitsWithDefectsSection commitsWithDefectIds>
@@ -33,41 +88,6 @@
             </li>
         </#list>
     </ul>
-</#macro>
-
-<#macro displayAllValidIssues>
-    <#list getIssueCategoryNamesList() as categoryName>
-        <div class="row">
-            <div class="col-md-8">
-                <#if (!getGenericErrorMessage().isEmpty())>
-	                <p>Error: ${getGenericErrorMessage()}</p>
-                </#if>
-              	<@displayValidIssue categoryName=categoryName/>
-            </div>
-        </div>
-    </#list>
-</#macro>
-
-<#macro displayValidIssue categoryName>
-    <#if (getIssuesByCategoryName(categoryName).size()>0)>
-        <#if (!categoryNameIsInvalid(categoryName))>
-            <h3><p class="bg-success">Released issues with type ${categoryName} <span class="badge">${getIssueCountByCategoryName(categoryName)}</span></p></h3>
-            <ul>
-                <#list getIssuesByCategoryName(categoryName) as issue>
-					<@showIssueDetails issue=issue/>
-                </#list>
-            </ul>
-        </#if>
-    </#if>
-</#macro>
-
-<#macro displayInvalidIssues>
-    <h3><p class="bg-success">Invalid Issues <span class="badge">${getTotalInvalidIssueCount()}</span></p></h3>
-    <div style="margin:10px 40px">
-		<@commitsWithDefectsSection commitsWithDefectIds=commitsWithDefectIds/>
-		<@displayInvalidIssuesForCategoryByStatus categoryName=getInvalidByStatusCategoryName()/>
-		<@displayInvalidIssuesForCategory categoryName=getInvalidByFixVersionCategoryName()/>
-    </div>
 </#macro>
 
 <#macro defectListSection uniqueDefects>
