@@ -49,13 +49,15 @@ public class Configuration {
     static final String ISSUE_SORT_TYPE = "issue.sort.type";
     static final String ISSUE_SORT_PRIORITY = "issue.sort.priority";
     static final String REPORT_DIRECTORY = "report.directory";
-    static final String REPORT_TEMPLATE = "report.template";
+    static final String REPORT_EXTERNAL_TEMPLATE = "report.externalTemplate";
+    static final String REPORT_INTERNAL_TEMPLATE = "report.internalTemplate";
     static final String RELEASE_VERSION = "version.release";
     static final String COMPLETED_STATUSES = "jira.completedStatuses";
     static final String FIX_VERSIONS = "jira.fixVersions";
     static final String KNOWN_ISSUES = "jira.knownIssues";
     static final String CLIENT_FACING_FILTERS = "report.clientFacingFilters";
     static final String LABELS_TO_SKIP = "jira.labelsToSkip";
+    static final String DEV_MODE= "devMode";
     
 	private Properties properties;
 
@@ -169,8 +171,12 @@ public class Configuration {
         return properties.getProperty(REPORT_DIRECTORY);
     }
 
-    public String getReportTemplate() {
-        return properties.getProperty(REPORT_TEMPLATE);
+    public String getReportInternalTemplate() {
+        return properties.getProperty(REPORT_INTERNAL_TEMPLATE);
+    }
+
+    public String getReportExternalTemplate() {
+        return properties.getProperty(REPORT_EXTERNAL_TEMPLATE);
     }
 
     public String getReleaseVersion() { 
@@ -219,7 +225,7 @@ public class Configuration {
         return CollectionUtils.arrayToImmutableSet(getClientFacingFilters());
     }
 
-    public boolean isClientFacing() {
+    public boolean isClientFacingRequested() {
         return getClientFacingFilters().length != 0;
     }
 
@@ -242,6 +248,10 @@ public class Configuration {
     @Target(ElementType.FIELD)
     public static @interface Element {
         public String value();
+    }
+
+    public boolean getDevMode() {
+        return Boolean.parseBoolean(properties.getProperty(DEV_MODE));
     }
 
 }

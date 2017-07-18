@@ -6,10 +6,13 @@ import com.atlassian.jira.rest.client.api.domain.Version;
 import com.google.common.base.Function;
 import com.google.common.base.Predicate;
 import com.google.common.collect.*;
+import com.infusion.relnotesgen.SCMFacade.Response;
 import com.infusion.relnotesgen.util.CollectionUtils;
 import com.infusion.relnotesgen.util.IssueCategorizer;
 import com.infusion.relnotesgen.util.JiraIssueSearchType;
 import com.infusion.relnotesgen.util.JiraUtils;
+import com.infusion.relnotesgen.util.ModelViewLevel;
+
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -32,7 +35,12 @@ public class ReleaseNotesModelFactory {
     private final SCMFacade.Response gitInfo;
     private final Configuration configuration;
     public final ImmutableSet<String> labelsToSkip;
-
+    public Map<ModelViewLevel, Map<String, List<Issue>>> jiraIssuesByType;
+    public ImmutableMap<ModelViewLevel, ImmutableMap<String, ImmutableSet<ReportJiraIssueModel>>> issueModelsByType;
+    public ImmutableSet<ReportCommitModel> commitsWithDefect;
+    public ImmutableSet<ReportJiraIssueModel> knownIssues;
+    public Map<JiraIssueSearchType, String> errors;
+    
     private static final String REQUIREMENTS_VA_ID_CUSTOMFIELD_10803 = "customfield_10803";
     private static final String DEFECT_ID_CUSTOMFIELD_11500 = "customfield_11500";
 
@@ -51,34 +59,107 @@ public class ReleaseNotesModelFactory {
         this.labelsToSkip = configuration.getLabelsToSkipSet();
     }
 
-    public ReleaseNotesModel get(final boolean clientFacing) {
+    public void prepare() {
         Iterable<CommitWithParsedInfo> commitsWithParsedInfo = generateCommitsWithParsedInfo(commitInfoProvider.getCommits());
         Map<String, Set<String>> prMap = generatePullRequestMap(commitsWithParsedInfo);
-        ImmutableSet<String> issueIds = generateIssueIds(commitsWithParsedInfo);
         Map<JiraIssueSearchType, String> errors = generateErrorMessageMap();
-		ImmutableMap<String, Issue> combinedJiraIssues = generateCombinedJiraIssues(issueIds, errors);
-        Map<String, Issue> combinedJiraIssuesNoSubtasks = filterOutSubtasks(combinedJiraIssues);
-        Map<String, Issue> combinedJiraIssuesClientFacing = combinedJiraIssuesNoSubtasks;
-        if (clientFacing) {
-            combinedJiraIssuesClientFacing = filterForClientFacing(combinedJiraIssuesNoSubtasks, configuration.getClientFacingFilterSet());
-        }
-        // TODO Refactor return type
-        Map<String, List<Issue>> jiraIssuesByType = issueCategorizer.byType(combinedJiraIssuesClientFacing.values());
-		ImmutableMap<String, ImmutableSet<ReportJiraIssueModel>> issueModelsByType = getIssuesByType(jiraIssuesByType, prMap);
-		ImmutableMap<String, ImmutableSet<ReportJiraIssueModel>> validatedIssueModelsByType = validateIssuesByType(issueModelsByType);
-        ImmutableSet<ReportJiraIssueModel> knownIssues = generateKnownIssues(configuration.getKnownIssues(), errors);
-        ImmutableSet<ReportJiraIssueModel> knownIssuesWithFixedIssuesRemoved = removeFixedIssuesFromKnownIssues(knownIssues, combinedJiraIssuesNoSubtasks);
-		ImmutableSet<ReportCommitModel> commitsWithDefectIds = getCommitsWithDefectIds(commitsWithParsedInfo);
-		ImmutableSet<ReportCommitModel> commitsWithDefectIdsFiltered = filterOutJiraIssues(commitsWithDefectIds, combinedJiraIssuesNoSubtasks);
-		ReleaseNotesModel model = new ReleaseNotesModel.ReleaseNotesModelBuilder()
-		        .issueCategoryNames(getIssueTypes(jiraIssuesByType)).issuesByCategory(validatedIssueModelsByType)
-		        .commitsWithDefectIds(commitsWithDefectIdsFiltered)
-		        .knownIssues(knownIssuesWithFixedIssuesRemoved).releaseVersion(versionInfoProvider.getReleaseVersion())
-		        .commitTag1(gitInfo.commitTag1).commitTag2(gitInfo.commitTag2).commitsCount(gitInfo.commits.size())
-		        .gitBranch(gitInfo.gitBranch).configuration(configuration).errors(errors)
-                .build();
+		Map<String, Issue> combinedJiraIssuesNoSubtasks = generateCombinedJiraIssuesNoSubtasks(errors, commitsWithParsedInfo);
 
+        this.jiraIssuesByType = generateJiraIssuesByType(combinedJiraIssuesNoSubtasks);
+        this.issueModelsByType = generateIssueModelsByType(prMap, jiraIssuesByType);
+		this.knownIssues = generateKnownIssues(errors, combinedJiraIssuesNoSubtasks);
+        this.commitsWithDefect = generateCommitsWithDefect(commitsWithParsedInfo, combinedJiraIssuesNoSubtasks);
+        this.errors = generateErrorMessageMap();
+    }
+
+    public ReleaseNotesModel getInternal() {
+        ReleaseNotesModel model= new ReleaseNotesModelBuilder()
+                .issueCategoryNames(getIssueTypes(jiraIssuesByType.get(ModelViewLevel.INTERNAL)))
+                .issuesByCategory(issueModelsByType.get(ModelViewLevel.EXTERNAL))
+                .internalIssuesByCategory(issueModelsByType.get(ModelViewLevel.INTERNAL))
+                .commitsWithDefectIds(commitsWithDefect)
+                .knownIssues(knownIssues)
+                .releaseVersion(versionInfoProvider.getReleaseVersion())
+                .commitTag1(gitInfo.commitTag1).commitTag2(gitInfo.commitTag2).commitsCount(gitInfo.commits.size())
+                .gitBranch(gitInfo.gitBranch).configuration(configuration).errors(errors)
+                .build();
         return model;
+    }
+
+    public ReleaseNotesModel getExternal() {
+        ReleaseNotesModel model = new ReleaseNotesModelBuilder()
+                .issueCategoryNames(getIssueTypes(jiraIssuesByType.get(ModelViewLevel.INTERNAL)))
+                .issuesByCategory(issueModelsByType.get(ModelViewLevel.EXTERNAL))
+                .internalIssuesByCategory(null)
+                .commitsWithDefectIds(commitsWithDefect)
+                .knownIssues(knownIssues)
+                .releaseVersion(versionInfoProvider.getReleaseVersion())
+                .commitTag1(gitInfo.commitTag1).commitTag2(gitInfo.commitTag2).commitsCount(gitInfo.commits.size())
+                .gitBranch(gitInfo.gitBranch).configuration(configuration).errors(errors)
+                .build();
+        return model;
+    }
+
+    private Map<String, Issue> generateCombinedJiraIssuesNoSubtasks(Map<JiraIssueSearchType, String> errors, Iterable<CommitWithParsedInfo> commitsWithParsedInfo) {
+        ImmutableSet<String> issueIds = generateIssueIds(commitsWithParsedInfo);
+        ImmutableMap<String, Issue> combinedJiraIssues = generateCombinedJiraIssues(issueIds, errors);
+        Map<String, Issue> combinedJiraIssuesNoSubtasks = filterOutSubtasks(combinedJiraIssues);
+        return combinedJiraIssuesNoSubtasks;
+    }
+
+    private ImmutableSet<ReportCommitModel> generateCommitsWithDefect(Iterable<CommitWithParsedInfo> commitsWithParsedInfo,
+            Map<String, Issue> combinedJiraIssuesNoSubtasks) {
+        ImmutableSet<ReportCommitModel> commitsWithDefectIds = getCommitsWithDefectIds(commitsWithParsedInfo);
+		ImmutableSet<ReportCommitModel> commitsWithDefectIdsFiltered = filterOutJiraIssues(commitsWithDefectIds, combinedJiraIssuesNoSubtasks);
+		return commitsWithDefectIdsFiltered;
+    }
+
+    private ImmutableMap<ModelViewLevel, ImmutableMap<String, ImmutableSet<ReportJiraIssueModel>>> generateIssueModelsByType(
+            Map<String, Set<String>> prMap, Map<ModelViewLevel, Map<String, List<Issue>>> jiraIssuesByType) {
+        ImmutableMap<ModelViewLevel, ImmutableMap<String, ImmutableSet<ReportJiraIssueModel>>> issueModelsByType = generateUnvalidatedIssueModelsByType(prMap, jiraIssuesByType);		
+        ImmutableMap<ModelViewLevel, ImmutableMap<String, ImmutableSet<ReportJiraIssueModel>>> validatedIssueModelsByType = generateValidIssuesByType(issueModelsByType);
+        return validatedIssueModelsByType;
+    }
+
+    private ImmutableSet<ReportJiraIssueModel> generateKnownIssues(Map<JiraIssueSearchType, String> errors,
+            Map<String, Issue> combinedJiraIssuesNoSubtasks) {
+        ImmutableSet<ReportJiraIssueModel> knownIssues = generateKnownIssues(errors, combinedJiraIssuesNoSubtasks, true);
+		knownIssues = removeFixedIssuesFromKnownIssues(knownIssues, combinedJiraIssuesNoSubtasks);
+		return knownIssues;
+    }
+    
+    private ImmutableMap<ModelViewLevel, ImmutableMap<String, ImmutableSet<ReportJiraIssueModel>>> generateValidIssuesByType(
+            ImmutableMap<ModelViewLevel, ImmutableMap<String, ImmutableSet<ReportJiraIssueModel>>> issueModelsByType) {
+        Map<ModelViewLevel, ImmutableMap<String, ImmutableSet<ReportJiraIssueModel>>> validIssuesByTypeCombined = 
+                new HashMap<ModelViewLevel, ImmutableMap<String, ImmutableSet<ReportJiraIssueModel>>>();
+        ImmutableMap<String, ImmutableSet<ReportJiraIssueModel>> internalIssues = validateIssuesByType(issueModelsByType.get(ModelViewLevel.INTERNAL));
+        ImmutableMap<String, ImmutableSet<ReportJiraIssueModel>> externalIssues = validateIssuesByType(issueModelsByType.get(ModelViewLevel.EXTERNAL));
+        validIssuesByTypeCombined.put(ModelViewLevel.INTERNAL, internalIssues);
+        validIssuesByTypeCombined.put(ModelViewLevel.EXTERNAL, externalIssues);
+        return ImmutableMap.copyOf(validIssuesByTypeCombined);
+    }
+
+    private ImmutableMap<ModelViewLevel, ImmutableMap<String, ImmutableSet<ReportJiraIssueModel>>> generateUnvalidatedIssueModelsByType(
+            Map<String, Set<String>> prMap, Map<ModelViewLevel, Map<String, List<Issue>>> jiraIssuesByType) {
+        Map<ModelViewLevel, ImmutableMap<String, ImmutableSet<ReportJiraIssueModel>>> issueModelsByTypeCombined = 
+                new HashMap<ModelViewLevel, ImmutableMap<String, ImmutableSet<ReportJiraIssueModel>>>();
+        ImmutableMap<String, ImmutableSet<ReportJiraIssueModel>> internalIssues = getIssuesByType(jiraIssuesByType.get(ModelViewLevel.INTERNAL), prMap);
+        ImmutableMap<String, ImmutableSet<ReportJiraIssueModel>> externalIssues = getIssuesByType(jiraIssuesByType.get(ModelViewLevel.EXTERNAL), prMap);
+        issueModelsByTypeCombined.put(ModelViewLevel.INTERNAL, internalIssues);
+        issueModelsByTypeCombined.put(ModelViewLevel.EXTERNAL, externalIssues);
+        return ImmutableMap.copyOf(issueModelsByTypeCombined);
+    }
+
+    private Map<ModelViewLevel, Map<String, List<Issue>>> generateJiraIssuesByType(Map<String, Issue> combinedJiraIssuesNoSubtasks) {
+        Map<ModelViewLevel, Map<String, Issue>> combinedJiraIssuesWithViewLevelsApplied = applyViewLevelsToCombinedJiraIssues(combinedJiraIssuesNoSubtasks);
+        Map<ModelViewLevel, Map<String, List<Issue>>> jiraIssuesByType = new HashMap<ModelViewLevel, Map<String, List<Issue>>>();
+        Map<String, List<Issue>> internalIssues = issueCategorizer.byType(combinedJiraIssuesWithViewLevelsApplied.get(ModelViewLevel.INTERNAL).values());
+        Map<String, List<Issue>> externalIssues = issueCategorizer.byType(combinedJiraIssuesWithViewLevelsApplied.get(ModelViewLevel.EXTERNAL).values());
+        jiraIssuesByType.put(ModelViewLevel.INTERNAL, internalIssues);
+        jiraIssuesByType.put(ModelViewLevel.EXTERNAL, externalIssues);
+        logger.debug("Jira Issues by type: internal size [{}] external size [{}]", combinedJiraIssuesWithViewLevelsApplied.get(ModelViewLevel.INTERNAL).size(), 
+                combinedJiraIssuesWithViewLevelsApplied.get(ModelViewLevel.EXTERNAL).size());
+        return jiraIssuesByType;
     }
 
 	private ImmutableSet<ReportCommitModel> filterOutJiraIssues(ImmutableSet<ReportCommitModel> commitsWithDefectIds,
@@ -93,6 +174,43 @@ public class ReleaseNotesModelFactory {
 	        }
 	    }
 	    return ImmutableSet.copyOf(remainingModels);
+	}
+
+    private Map<ModelViewLevel, Map<String, Issue>> applyViewLevelsToCombinedJiraIssues(Map<String, Issue> combinedJiraIssuesNoSubtasks) {
+        Map<ModelViewLevel, Map<String, Issue>> managed = new HashMap<ModelViewLevel, Map<String, Issue>>();
+        Map<String, Issue> clientFacing = new HashMap<String, Issue>();
+        Map<String, Issue> internalOnly = new HashMap<String, Issue>();
+
+        for (Map.Entry<String, Issue> curr : combinedJiraIssuesNoSubtasks.entrySet()) {
+            Iterable<IssueField> fields = curr.getValue().getFields();
+            boolean indicateAsInternalOnly = false;
+            for (IssueField field : fields) {
+                if (field.getName() != null && configuration.getClientFacingFilterSet().contains(field.getName())) {
+                    if (field.getValue() != null) {
+                        indicateAsInternalOnly = true;
+                    }
+                }
+            }
+            if (!indicateAsInternalOnly) {
+                clientFacing.put(curr.getKey(), curr.getValue());
+            } else {
+                internalOnly.put(curr.getKey(), curr.getValue());                
+            }
+        }
+        logger.debug("Combined Jira Issues: internal size [{}] external size [{}]", combinedJiraIssuesNoSubtasks.size(), clientFacing.size());
+        managed.put(ModelViewLevel.EXTERNAL, clientFacing);
+        managed.put(ModelViewLevel.INTERNAL, internalOnly);//combinedJiraIssuesNoSubtasks);
+        return managed;
+    }
+
+    private ImmutableSet<ReportJiraIssueModel> generateKnownIssues(Map<JiraIssueSearchType, String> errors, Map<String, Issue> combinedJiraIssuesNoSubtasks, final boolean isClientFacing) {
+        ImmutableSet<ReportJiraIssueModel> knownIssues = generateKnownIssues(configuration.getKnownIssues(), errors);     
+		ImmutableSet<ReportJiraIssueModel> knownIssuesWithIndicatedLablesSkipped = knownIssues;
+		if (isClientFacing) {
+            knownIssuesWithIndicatedLablesSkipped = removeIssuesWithSkipLabels(knownIssues);
+		}
+        ImmutableSet<ReportJiraIssueModel> knownIssuesWithFixedIssuesRemoved = removeFixedIssuesFromKnownIssues(knownIssuesWithIndicatedLablesSkipped, combinedJiraIssuesNoSubtasks);
+        return knownIssuesWithFixedIssuesRemoved;
     }
 
     private ImmutableSet<ReportJiraIssueModel> removeFixedIssuesFromKnownIssues(final ImmutableSet<ReportJiraIssueModel> knownIssues, 
@@ -124,7 +242,8 @@ public class ReleaseNotesModelFactory {
 	private ImmutableSet<ReportJiraIssueModel> generateKnownIssues(final String knownIssues, final Map<JiraIssueSearchType, String> errors) {
 		ImmutableMap<String, Issue> knownIssuesMap = jiraConnector.getKnownIssuesByJql(configuration.getKnownIssues(), errors);
         ImmutableSet<ReportJiraIssueModel> knownIssuesModelSet = generateKnownIssuesModelSet(knownIssuesMap);
-        return removeIssuesWithSkipLabels(knownIssuesModelSet);
+//        mockithere
+        return knownIssuesModelSet;
 	}
 	
     private ImmutableMap<String, Issue> removeIssuesWithSkipLabels(ImmutableMap<String, Issue> jiraIssuesModelMap) {
@@ -234,25 +353,6 @@ public class ReleaseNotesModelFactory {
 		return combinedJiraIssuesNoSubtasks;
 	}
 	
-    private Map<String, Issue> filterForClientFacing(Map<String, Issue> combinedJiraIssuesNoSubtasks, final Set issueFilterIds) {
-        Map<String, Issue> combinedJiraIssuesClientFacing = Maps.filterValues(combinedJiraIssuesNoSubtasks, new Predicate<Issue>() {
-
-            @Override
-            public boolean apply(Issue issue) {
-                Iterable<IssueField> fields = issue.getFields();
-                for (IssueField field : fields) {
-                    if (field.getName() != null && issueFilterIds.contains(field.getName())) {
-                        if (field.getValue() != null) {
-                            return true;
-                        }
-                    }
-                }
-                return false;
-            }
-        });
-        return combinedJiraIssuesClientFacing;
-    }	
-    
     public ImmutableMap<String, Issue> generateCombinedJiraIssues(final ImmutableSet<String> issueIds, final Map<JiraIssueSearchType, String> errors) {
         ImmutableMap<String, Issue> fixVersionIssues = jiraConnector.getIssuesByFixVersions(configuration.getFixVersionsSet(), errors);
         ImmutableMap<String, Issue> jiraIssues = jiraConnector.getIssuesIncludeParents(issueIds, errors);

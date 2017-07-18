@@ -18,17 +18,31 @@
 </#macro>
 
 <#macro displayInvalidIssuesForCategoryByStatus categoryName>
-	<h4><p class="bg-success">${categoryName} <span class="badge">${getIssueCountByCategoryName(categoryName)}</span></p></h3>
+	<h4><p class="bg-success">${categoryName} <span class="badge">${getTotalIssueCountByCategoryName(categoryName)}</span></p></h3>
+
     <ul>
-        <#list getInvalidStateIssueStatuses() as status>
- 	    <h4><p class="bg-success">${status}</p></h3>
- 	       <#list getInvalidStateIssuesByStatus(status) as issue>
- 			<@showIssueDetails issue=issue/>
+        <#list getExternalInvalidStateIssueStatuses() as status>
+ 	    	<h4><p class="bg-success">${status}</p></h3>
+ 	       	<#list getExternalInvalidStateIssuesByStatus(status) as issue>
+ 				<@showIssueDetails issue=issue/>
  	       </#list>
         </#list>
     </ul>
+    <#if ((getInternalIssueCountByCategoryName(categoryName)) gt 0)>
+	    <div style="margin:10px 40px">
+		    <h4><p class="bg-success"><span class="badge">INTERNAL</span> ${categoryName} <span class="badge">${getInternalIssueCountByCategoryName(categoryName)}</span></p></h3>
+		    <ul>
+        		<#list getInternalInvalidStateIssueStatuses() as status>
+    			<h4><p class="bg-success">${status}</p></h3>
+    		   		<#list getInternalInvalidStateIssuesByStatus(status) as issue>
+ 						<@showIssueDetails issue=issue/>
+ 	    	   		</#list>
+        		</#list>
+    		</ul>
+	    </div>
+    </#if>
 </#macro>
- 
+
 <#macro displayAllValidIssues>
     <#list getIssueCategoryNamesList() as categoryName>
         <div class="row">
